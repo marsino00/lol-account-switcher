@@ -6,6 +6,11 @@ use std::time::Duration;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use serde::{Deserialize, Serialize};
+use tauri::{
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, Manager, WindowEvent,
+};
 
 // --- Paths ---
 
@@ -109,15 +114,50 @@ fn clear_session_files() {
     }
 }
 
+fn running_riot_processes() -> Vec<&'static str> {
+    let mut cmd = Command::new("tasklist");
+    cmd.args(["/FO", "CSV", "/NH"]);
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    let output = match cmd.output() {
+        Ok(o) => o,
+        // If tasklist fails, fall back to the conservative "assume all running"
+        Err(_) => return RIOT_PROCESSES.to_vec(),
+    };
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    RIOT_PROCESSES
+        .iter()
+        .copied()
+        .filter(|name| {
+            let needle = format!("\"{}.exe\"", name);
+            stdout.contains(&needle)
+        })
+        .collect()
+}
+
 fn stop_riot_processes() {
-    for name in RIOT_PROCESSES {
-        let mut cmd = Command::new("taskkill");
-        cmd.args(["/F", "/IM", &format!("{}.exe", name)]);
-        #[cfg(target_os = "windows")]
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-        cmd.output().ok();
+    let running = running_riot_processes();
+    if running.is_empty() {
+        return;
     }
-    thread::sleep(Duration::from_millis(1200));
+    // Single taskkill invocation with one /IM per running process
+    let mut cmd = Command::new("taskkill");
+    cmd.arg("/F");
+    for name in &running {
+        cmd.args(["/IM", &format!("{}.exe", name)]);
+    }
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000);
+    cmd.output().ok();
+    // Poll until processes are gone or timeout. taskkill /F frees file locks
+    // almost immediately after the process dies, so 500ms is plenty in practice.
+    let deadline = std::time::Instant::now() + Duration::from_millis(500);
+    while std::time::Instant::now() < deadline {
+        if running_riot_processes().is_empty() {
+            return;
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
 }
 
 fn apply_reference_configs(profile_dir: &PathBuf) -> Result<(), String> {
@@ -273,6 +313,84 @@ fn set_reference_profile(name: String) -> Result<String, String> {
     Ok(format!("Reference profile: {}", name))
 }
 
+// --- System Tray ---
+
+fn profile_names() -> Vec<String> {
+    list_profiles().into_iter().map(|p| p.name).collect()
+}
+
+fn build_tray_menu(app: &AppHandle, profiles: &[String]) -> tauri::Result<Menu<tauri::Wry>> {
+    let menu = Menu::new(app)?;
+    if profiles.is_empty() {
+        let empty = MenuItem::with_id(app, "noop", "(No profiles)", false, None::<&str>)?;
+        menu.append(&empty)?;
+    } else {
+        for name in profiles {
+            let item = MenuItem::with_id(
+                app,
+                format!("launch:{}", name),
+                format!("Launch  {}", name),
+                true,
+                None::<&str>,
+            )?;
+            menu.append(&item)?;
+        }
+    }
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
+    let kill = MenuItem::with_id(app, "kill", "Kill all", true, None::<&str>)?;
+    menu.append(&kill)?;
+    menu.append(&PredefinedMenuItem::separator(app)?)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    menu.append(&quit)?;
+    Ok(menu)
+}
+
+#[tauri::command]
+fn rebuild_tray(app: AppHandle) -> Result<(), String> {
+    let names = profile_names();
+    let menu = build_tray_menu(&app, &names).map_err(|e| e.to_string())?;
+    if let Some(tray) = app.tray_by_id("main") {
+        tray.set_menu(Some(menu)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+fn handle_tray_menu(app: &AppHandle, id: &str) {
+    match id {
+        "kill" => {
+            let _ = close_riot();
+            let _ = app.emit("tray:closed-all", ());
+        }
+        "show" => show_main_window(app),
+        "quit" => app.exit(0),
+        other => {
+            if let Some(name) = other.strip_prefix("launch:") {
+                let name = name.to_string();
+                let app_handle = app.clone();
+                // Launch off the main thread — stop_riot_processes sleeps 1.2s
+                thread::spawn(move || {
+                    match launch_profile(name.clone()) {
+                        Ok(_) => {
+                            let _ = app_handle.emit("tray:launched", name);
+                        }
+                        Err(e) => {
+                            let _ = app_handle.emit("tray:error", e);
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -289,7 +407,41 @@ pub fn run() {
             set_riot_path,
             set_reference_profile,
             auto_detect_riot,
+            rebuild_tray,
         ])
+        .setup(|app| {
+            let menu = build_tray_menu(app.handle(), &profile_names())?;
+            let icon = app
+                .default_window_icon()
+                .cloned()
+                .expect("default window icon missing");
+            TrayIconBuilder::with_id("main")
+                .icon(icon)
+                .tooltip("LoL Account Switcher")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| {
+                    handle_tray_menu(app, event.id.as_ref());
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        show_main_window(tray.app_handle());
+                    }
+                })
+                .build(app)?;
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -21,5 +21,5 @@ export const api = {
   setReferenceProfile: (name: string) =>
     invoke<string>("set_reference_profile", { name }),
   autoDetectRiot: () => invoke<string>("auto_detect_riot"),
-
+  rebuildTray: () => invoke<void>("rebuild_tray"),
 };

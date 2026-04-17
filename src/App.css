@@ -221,6 +221,37 @@ body {
   box-shadow: 0 0 30px rgba(200, 155, 60, 0.15);
 }
 
+.profile-card.active {
+  border-color: var(--blue);
+  box-shadow: 0 0 20px var(--blue-glow);
+}
+
+.profile-card.active::before {
+  opacity: 1;
+  background: linear-gradient(90deg, transparent, var(--blue), transparent);
+}
+
+.active-badge {
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--blue);
+  background: rgba(3, 151, 171, 0.12);
+  border: 1px solid var(--blue);
+  border-radius: 3px;
+  padding: 3px 8px;
+  text-transform: uppercase;
+  animation: pulseBadge 2s ease infinite;
+  margin-bottom: -8px;
+}
+
+@keyframes pulseBadge {
+  0%, 100% { box-shadow: 0 0 0 0 var(--blue-glow); }
+  50% { box-shadow: 0 0 12px 2px var(--blue-glow); }
+}
+
 .profile-card.launching::before {
   opacity: 1;
   background: linear-gradient(90deg, transparent, var(--gold), transparent);
@@ -505,11 +536,42 @@ body {
   font-size: 11px;
 }
 
+.lang-toggle {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.lang-btn {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: var(--bg-card);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lang-btn:hover {
+  color: var(--text);
+  border-color: var(--border-hover);
+}
+
+.lang-btn.active {
+  background: var(--gold-dim);
+  color: var(--gold-light);
+  border-color: var(--gold);
+}
+
 /* ============ TOAST ============ */
 
 .toast {
   position: fixed;
-  bottom: 24px;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg-card);
