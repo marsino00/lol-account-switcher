@@ -4,6 +4,12 @@ A lightweight desktop app for switching between multiple League of Legends accou
 
 Built with [Tauri](https://tauri.app/) (Rust + React + TypeScript).
 
+## Installation
+
+1. Download the latest `.exe` installer from [Releases](https://github.com/marsino00/lol-account-switcher/releases)
+2. Run the installer (Windows may show a SmartScreen warning — click "More info" → "Run anyway")
+3. Open **LoL Account Switcher**. The app will auto-detect your Riot Client folder; if it can't, you can pick it manually (usually `C:\Riot Games\Riot Client`).
+
 ## How it works
 
 The app saves your Riot Client session files locally when you log in with "Stay signed in" enabled. To switch accounts, it swaps those session files and launches League — no need to type credentials again.
@@ -25,12 +31,6 @@ The app saves your Riot Client session files locally when you log in with "Stay 
 - **Multi-language UI** — English (default) and Spanish, togglable from the settings panel; preference is persisted locally
 - **Auto-detection** of the Riot Client install path
 - **Reference profile** for replicating Riot Client settings across new accounts
-
-## Installation
-
-1. Download the latest `.exe` installer from [Releases](https://github.com/marsino00/lol-account-switcher/releases)
-2. Run the installer (Windows may show a SmartScreen warning — click "More info" → "Run anyway")
-3. Open **LoL Account Switcher**. The app will auto-detect your Riot Client folder; if it can't, you can pick it manually (usually `C:\Riot Games\Riot Client`).
 
 ## Usage
 
