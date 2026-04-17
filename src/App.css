@@ -59,7 +59,9 @@ body {
 }
 
 .logo {
-  font-size: 24px;
+  width: 28px;
+  height: 28px;
+  display: block;
 }
 
 .app-title {
@@ -334,8 +336,10 @@ body {
 }
 
 .setup-icon {
-  font-size: 64px;
+  width: 96px;
+  height: 96px;
   margin-bottom: 8px;
+  display: block;
 }
 
 .setup-title {

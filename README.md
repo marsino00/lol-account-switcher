@@ -1,4 +1,4 @@
-# ⚔️ LoL Account Switcher
+# LoL Account Switcher
 
 A lightweight desktop app for switching between multiple League of Legends accounts instantly — no passwords stored, no keystrokes simulated.
 

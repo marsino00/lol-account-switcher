@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api, ProfileInfo, AppConfig } from "./lib/api";
+import appIcon from "./assets/logo.png";
 import "./App.css";
 
 type Screen = "setup" | "home" | "adding";
@@ -145,24 +146,35 @@ function App() {
     return (
       <div className="app">
         <div className="setup-screen">
-          <div className="setup-icon">⚔️</div>
-          <h1 className="setup-title">LoL Switcher</h1>
+          <img
+            src={appIcon}
+            alt="LoL Account Switcher"
+            className="setup-icon"
+          />
+          <h1 className="setup-title">LoL Account Switcher</h1>
           <p className="setup-subtitle">
             Select the Riot Client folder to get started
           </p>
           <p className="setup-hint">Usually at C:\Riot Games\Riot Client</p>
-           <button className="btn btn-primary btn-lg" onClick={async () => {
-            try {
-              const detected = await api.autoDetectRiot();
-              showStatus(`Detected: ${detected}`);
-              await loadData();
-            } catch {
-              showStatus("Not found.  Select it manually.");
-            }
-          }}>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={async () => {
+              try {
+                const detected = await api.autoDetectRiot();
+                showStatus(`Detected: ${detected}`);
+                await loadData();
+              } catch {
+                showStatus("Not found.  Select it manually.");
+              }
+            }}
+          >
             Auto-detect
           </button>
-          <button className="btn btn-secondary" onClick={handleSelectPath} style={{ marginTop: '12px' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={handleSelectPath}
+            style={{ marginTop: "12px" }}
+          >
             Select manually
           </button>
           {status && <p className="status">{status}</p>}
@@ -247,8 +259,7 @@ function App() {
       {/* Header */}
       <header className="header">
         <div className="header-left">
-          <span className="logo">⚔️</span>
-          <h1 className="app-title">LoL Switcher</h1>
+          <h1 className="app-title">LoL Account Switcher</h1>
         </div>
         <div className="header-right">
           <button
@@ -256,7 +267,7 @@ function App() {
             onClick={handleClose}
             title="Close Riot Client and League"
           >
-            ✕ Close all
+            ✕ Kill all
           </button>
           <button
             className="btn btn-ghost btn-sm"
