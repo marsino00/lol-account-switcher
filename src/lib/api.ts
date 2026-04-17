@@ -20,4 +20,6 @@ export const api = {
   setRiotPath: (path: string) => invoke<string>("set_riot_path", { path }),
   setReferenceProfile: (name: string) =>
     invoke<string>("set_reference_profile", { name }),
+  autoDetectRiot: () => invoke<string>("auto_detect_riot"),
+
 };

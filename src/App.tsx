@@ -26,7 +26,16 @@ function App() {
       setConfig(cfg);
       setProfiles(profs);
       if (!cfg.riot_client_exe) {
-        setScreen("setup");
+        // Try auto-detect before showing setup
+        try {
+          const detected = await api.autoDetectRiot();
+          showStatus(`Riot Client detectado en ${detected}`);
+          const newConfig = await api.getConfig();
+          setConfig(newConfig);
+          setScreen("home");
+        } catch {
+          setScreen("setup");
+        }
       } else {
         setScreen("home");
       }
@@ -142,8 +151,19 @@ function App() {
             Select the Riot Client folder to get started
           </p>
           <p className="setup-hint">Usually at C:\Riot Games\Riot Client</p>
-          <button className="btn btn-primary btn-lg" onClick={handleSelectPath}>
-            Select folder
+           <button className="btn btn-primary btn-lg" onClick={async () => {
+            try {
+              const detected = await api.autoDetectRiot();
+              showStatus(`Detected: ${detected}`);
+              await loadData();
+            } catch {
+              showStatus("Not found.  Select it manually.");
+            }
+          }}>
+            Auto-detect
+          </button>
+          <button className="btn btn-secondary" onClick={handleSelectPath} style={{ marginTop: '12px' }}>
+            Select manually
           </button>
           {status && <p className="status">{status}</p>}
         </div>

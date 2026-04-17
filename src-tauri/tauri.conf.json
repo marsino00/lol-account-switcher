@@ -13,9 +13,15 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "lol-switcher",
-        "width": 800,
-        "height": 600
+        "title": "LoL Switcher",
+        "width": 600,
+        "height": 500,
+        "minWidth": 500,
+        "minHeight": 400,
+        "maxWidth": 800,
+        "maxHeight": 650,
+        "center": true,
+        "resizable": true
       }
     ],
     "security": {

@@ -245,6 +245,27 @@ fn set_riot_path(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn auto_detect_riot() -> Result<String, String> {
+    let candidates = vec![
+        "C:\\Riot Games\\Riot Client",
+        "D:\\Riot Games\\Riot Client",
+        "C:\\Program Files\\Riot Games\\Riot Client",
+        "C:\\Program Files (x86)\\Riot Games\\Riot Client",
+        "D:\\Program Files\\Riot Games\\Riot Client",
+    ];
+    for path in candidates {
+        let exe = std::path::PathBuf::from(path).join("RiotClientServices.exe");
+        if exe.exists() {
+            let mut config = load_config();
+            config.riot_client_exe = exe.to_string_lossy().to_string();
+            save_config(&config).ok();
+            return Ok(path.to_string());
+        }
+    }
+    Err("No se encontró el Riot Client automáticamente".to_string())
+}
+
+#[tauri::command]
 fn set_reference_profile(name: String) -> Result<String, String> {
     let mut config = load_config();
     config.reference_profile = name.clone();
@@ -267,6 +288,7 @@ pub fn run() {
             get_config,
             set_riot_path,
             set_reference_profile,
+            auto_detect_riot,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
