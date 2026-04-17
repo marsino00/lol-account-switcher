@@ -21,6 +21,8 @@ function App() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
     null,
   );
+  const [renameTarget, setRenameTarget] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState("");
 
   const showStatus = useCallback((msg: string) => {
     setStatus(msg);
@@ -122,6 +124,29 @@ function App() {
       showStatus(t.deleted(name));
       setShowDeleteConfirm(null);
       if (activeProfile === name) setActiveProfile(null);
+      await loadData();
+    } catch (e) {
+      showStatus(t.error(e));
+    }
+  };
+
+  const openRename = (name: string) => {
+    setRenameTarget(name);
+    setRenameInput(name);
+  };
+
+  const handleRename = async () => {
+    if (!renameTarget) return;
+    const next = renameInput.trim();
+    if (!next || next === renameTarget) {
+      setRenameTarget(null);
+      return;
+    }
+    try {
+      await api.renameProfile(renameTarget, next);
+      showStatus(t.renamed(renameTarget, next));
+      if (activeProfile === renameTarget) setActiveProfile(next);
+      setRenameTarget(null);
       await loadData();
     } catch (e) {
       showStatus(t.error(e));
@@ -370,6 +395,13 @@ function App() {
                         </button>
                       )}
                       <button
+                        className="btn-icon"
+                        onClick={() => openRename(p.name)}
+                        title={t.renameTitle}
+                      >
+                        ✎
+                      </button>
+                      <button
                         className="btn-icon btn-icon-danger"
                         onClick={() => setShowDeleteConfirm(p.name)}
                         title={t.deleteTitle}
@@ -401,6 +433,46 @@ function App() {
 
       {/* Status Toast */}
       {status && <div className="toast">{status}</div>}
+
+      {/* Rename Modal */}
+      {renameTarget && (
+        <div className="modal-overlay" onClick={() => setRenameTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <p className="modal-text">
+              {t.renameProfileTitle} <strong>{renameTarget}</strong>
+            </p>
+            <input
+              className="input"
+              type="text"
+              placeholder={t.newName}
+              value={renameInput}
+              onChange={(e) => setRenameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRename();
+                if (e.key === "Escape") setRenameTarget(null);
+              }}
+              autoFocus
+            />
+            <div className="modal-actions" style={{ marginTop: 16 }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setRenameTarget(null)}
+              >
+                {t.cancel}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleRename}
+                disabled={
+                  !renameInput.trim() || renameInput.trim() === renameTarget
+                }
+              >
+                {t.rename}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (

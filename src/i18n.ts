@@ -31,6 +31,7 @@ const translations = {
     refBadgeTitle: "Reference profile",
     useAsReference: "Use as reference",
     deleteTitle: "Delete",
+    renameTitle: "Rename",
 
     // Setup screen
     setupSubtitle: "Select the Riot Client folder to get started",
@@ -58,6 +59,9 @@ const translations = {
     deleteProfileQ: "Delete profile",
     cancel: "Cancel",
     delete: "Delete",
+    renameProfileTitle: "Rename profile",
+    newName: "New name",
+    rename: "Rename",
 
     // Toasts
     pathSaved: "Path saved",
@@ -67,6 +71,7 @@ const translations = {
     launched: (n: string) => `Launched: ${n}`,
     closed: "Closed",
     deleted: (n: string) => `Deleted: ${n}`,
+    renamed: (o: string, n: string) => `Renamed: ${o} → ${n}`,
     referenceSet: (n: string) => `Reference profile: ${n}`,
     riotOpened: "Riot Client opened. Log in with 'Stay signed in'.",
     profileSaved: (n: string) => `Profile '${n}' saved`,
@@ -98,6 +103,7 @@ const translations = {
     refBadgeTitle: "Perfil de referencia",
     useAsReference: "Usar como referencia",
     deleteTitle: "Eliminar",
+    renameTitle: "Renombrar",
 
     // Setup screen
     setupSubtitle: "Selecciona la carpeta del Riot Client para empezar",
@@ -125,6 +131,9 @@ const translations = {
     deleteProfileQ: "¿Eliminar el perfil",
     cancel: "Cancelar",
     delete: "Eliminar",
+    renameProfileTitle: "Renombrar perfil",
+    newName: "Nuevo nombre",
+    rename: "Renombrar",
 
     // Toasts
     pathSaved: "Ruta guardada",
@@ -134,6 +143,7 @@ const translations = {
     launched: (n: string) => `Iniciado: ${n}`,
     closed: "Cerrado",
     deleted: (n: string) => `Eliminado: ${n}`,
+    renamed: (o: string, n: string) => `Renombrado: ${o} → ${n}`,
     referenceSet: (n: string) => `Perfil de referencia: ${n}`,
     riotOpened:
       "Riot Client abierto. Inicia sesión con 'Mantener sesión iniciada'.",

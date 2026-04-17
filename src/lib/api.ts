@@ -13,6 +13,8 @@ export const api = {
   listProfiles: () => invoke<ProfileInfo[]>("list_profiles"),
   saveProfile: (name: string) => invoke<string>("save_profile", { name }),
   deleteProfile: (name: string) => invoke<string>("delete_profile", { name }),
+  renameProfile: (oldName: string, newName: string) =>
+    invoke<string>("rename_profile", { oldName, newName }),
   launchProfile: (name: string) => invoke<string>("launch_profile", { name }),
   closeRiot: () => invoke<string>("close_riot"),
   prepareAdd: () => invoke<string>("prepare_add"),

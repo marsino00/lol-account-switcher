@@ -304,6 +304,7 @@ body {
   cursor: pointer;
   transition: all 0.25s ease;
   width: 100%;
+  margin-top: auto;
 }
 
 .btn-play:hover:not(:disabled) {

@@ -229,6 +229,39 @@ fn delete_profile(name: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn rename_profile(old_name: String, new_name: String) -> Result<String, String> {
+    let new_name = new_name.trim().to_string();
+    if new_name.is_empty() {
+        return Err("New name cannot be empty".to_string());
+    }
+    if new_name.starts_with('_') {
+        return Err("Name cannot start with '_'".to_string());
+    }
+    if new_name.contains(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) {
+        return Err("Name contains invalid characters".to_string());
+    }
+    if old_name == new_name {
+        return Ok("No change".to_string());
+    }
+    let src = profiles_dir().join(&old_name);
+    let dst = profiles_dir().join(&new_name);
+    if !src.exists() {
+        return Err(format!("Profile '{}' does not exist", old_name));
+    }
+    if dst.exists() {
+        return Err(format!("Profile '{}' already exists", new_name));
+    }
+    fs::rename(&src, &dst).map_err(|e| e.to_string())?;
+    // Keep reference_profile in sync if it pointed to the renamed one
+    let mut config = load_config();
+    if config.reference_profile == old_name {
+        config.reference_profile = new_name.clone();
+        save_config(&config)?;
+    }
+    Ok(format!("Renamed '{}' to '{}'", old_name, new_name))
+}
+
+#[tauri::command]
 fn launch_profile(name: String) -> Result<String, String> {
     let config = load_config();
     if config.riot_client_exe.is_empty() {
@@ -400,6 +433,7 @@ pub fn run() {
             list_profiles,
             save_profile,
             delete_profile,
+            rename_profile,
             launch_profile,
             close_riot,
             prepare_add,
