@@ -13,7 +13,9 @@ function App() {
   const [status, setStatus] = useState("");
   const [launching, setLaunching] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
+    null,
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -45,10 +47,13 @@ function App() {
   // --- Setup Screen ---
   const handleSelectPath = async () => {
     try {
-      const selected = await open({ directory: true, title: "Selecciona la carpeta del Riot Client" });
+      const selected = await open({
+        directory: true,
+        title: "Select the Riot Client folder",
+      });
       if (selected) {
         await api.setRiotPath(selected as string);
-        showStatus("Ruta guardada");
+        showStatus("Path saved");
         await loadData();
       }
     } catch (e) {
@@ -61,7 +66,7 @@ function App() {
     setLaunching(name);
     try {
       await api.launchProfile(name);
-      showStatus(`Lanzado: ${name}`);
+      showStatus(`Launched: ${name}`);
     } catch (e) {
       showStatus(`Error: ${e}`);
     }
@@ -71,7 +76,7 @@ function App() {
   const handleClose = async () => {
     try {
       await api.closeRiot();
-      showStatus("Cerrado");
+      showStatus("Closed");
     } catch (e) {
       showStatus(`Error: ${e}`);
     }
@@ -80,7 +85,7 @@ function App() {
   const handleDelete = async (name: string) => {
     try {
       await api.deleteProfile(name);
-      showStatus(`Eliminado: ${name}`);
+      showStatus(`Deleted: ${name}`);
       setShowDeleteConfirm(null);
       await loadData();
     } catch (e) {
@@ -91,7 +96,7 @@ function App() {
   const handleSetReference = async (name: string) => {
     try {
       await api.setReferenceProfile(name);
-      showStatus(`Perfil de referencia: ${name}`);
+      showStatus(`Reference profile: ${name}`);
       await loadData();
     } catch (e) {
       showStatus(`Error: ${e}`);
@@ -108,7 +113,7 @@ function App() {
     if (!newProfileName.trim()) return;
     try {
       await api.prepareAdd();
-      showStatus("Riot Client abierto. Haz login con 'Stay signed in'.");
+      showStatus("Riot Client opened. Log in with 'Stay signed in'.");
     } catch (e) {
       showStatus(`Error: ${e}`);
     }
@@ -118,7 +123,7 @@ function App() {
     if (!newProfileName.trim()) return;
     try {
       await api.saveProfile(newProfileName.trim());
-      showStatus(`Perfil '${newProfileName.trim()}' guardado`);
+      showStatus(`Profile '${newProfileName.trim()}' saved`);
       setScreen("home");
       await loadData();
     } catch (e) {
@@ -134,11 +139,11 @@ function App() {
           <div className="setup-icon">⚔️</div>
           <h1 className="setup-title">LoL Switcher</h1>
           <p className="setup-subtitle">
-            Selecciona la carpeta del Riot Client para empezar
+            Select the Riot Client folder to get started
           </p>
-          <p className="setup-hint">Normalmente en C:\Riot Games\Riot Client</p>
+          <p className="setup-hint">Usually at C:\Riot Games\Riot Client</p>
           <button className="btn btn-primary btn-lg" onClick={handleSelectPath}>
-            Seleccionar carpeta
+            Select folder
           </button>
           {status && <p className="status">{status}</p>}
         </div>
@@ -151,19 +156,19 @@ function App() {
       <div className="app">
         <div className="adding-screen">
           <button className="btn-back" onClick={() => setScreen("home")}>
-            ← Volver
+            ← Back
           </button>
-          <h1 className="adding-title">Añadir cuenta</h1>
+          <h1 className="adding-title">Add account</h1>
 
           <div className="adding-steps">
             <div className="step">
               <div className="step-number">1</div>
               <div className="step-content">
-                <label className="step-label">Nombre del perfil</label>
+                <label className="step-label">Profile name</label>
                 <input
                   className="input"
                   type="text"
-                  placeholder="ej: main, smurf, tryhard..."
+                  placeholder="e.g. main, smurf, tryhard..."
                   value={newProfileName}
                   onChange={(e) => setNewProfileName(e.target.value)}
                   autoFocus
@@ -174,9 +179,10 @@ function App() {
             <div className="step">
               <div className="step-number">2</div>
               <div className="step-content">
-                <p className="step-label">Abrir Riot Client</p>
+                <p className="step-label">Open Riot Client</p>
                 <p className="step-desc">
-                  Se abrirá con sesión limpia. Haz login con la cuenta y marca
+                  It will open with a clean session. Log in with your account
+                  and check
                   <strong> "Stay signed in"</strong>.
                 </p>
                 <button
@@ -184,7 +190,8 @@ function App() {
                   onClick={handlePrepareAdd}
                   disabled={!newProfileName.trim()}
                 >
-                  Abrir Riot Client
+                  Open Riot Client and click Play and open League of Legends
+                  client
                 </button>
               </div>
             </div>
@@ -192,17 +199,18 @@ function App() {
             <div className="step">
               <div className="step-number">3</div>
               <div className="step-content">
-                <p className="step-label">Guardar perfil</p>
+                <p className="step-label">Save profile</p>
                 <p className="step-desc">
-                  Cuando hayas entrado al cliente de League, ciérralo todo con la
-                  X y pulsa guardar.
+                  Close the League client (don't log out, just close the
+                  window). Then close the Riot Client and make sure it's not
+                  running in the system tray.
                 </p>
                 <button
                   className="btn btn-primary"
                   onClick={handleFinishAdd}
                   disabled={!newProfileName.trim()}
                 >
-                  Guardar perfil
+                  Save profile
                 </button>
               </div>
             </div>
@@ -226,14 +234,14 @@ function App() {
           <button
             className="btn btn-ghost btn-sm"
             onClick={handleClose}
-            title="Cerrar Riot Client y League"
+            title="Close Riot Client and League"
           >
-            ✕ Cerrar todo
+            ✕ Close all
           </button>
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => setShowSettings(!showSettings)}
-            title="Ajustes"
+            title="Settings"
           >
             ⚙
           </button>
@@ -246,16 +254,16 @@ function App() {
           <div className="settings-row">
             <span className="settings-label">Riot Client:</span>
             <span className="settings-value">
-              {config?.riot_client_exe || "No configurado"}
+              {config?.riot_client_exe || "Not configured"}
             </span>
             <button className="btn btn-ghost btn-sm" onClick={handleSelectPath}>
-              Cambiar
+              Change
             </button>
           </div>
           <div className="settings-row">
-            <span className="settings-label">Perfil referencia:</span>
+            <span className="settings-label">Reference profile:</span>
             <span className="settings-value">
-              {config?.reference_profile || "Ninguno"}
+              {config?.reference_profile || "None"}
             </span>
           </div>
         </div>
@@ -265,8 +273,8 @@ function App() {
       <div className="profiles-container">
         {profiles.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-text">No hay perfiles todavía</p>
-            <p className="empty-hint">Añade tu primera cuenta para empezar</p>
+            <p className="empty-text">No profiles yet</p>
+            <p className="empty-hint">Add your first account to get started</p>
           </div>
         ) : (
           <div className="profiles-grid">
@@ -279,14 +287,14 @@ function App() {
                   <span className="profile-name">{p.name}</span>
                   <div className="card-actions">
                     {config?.reference_profile === p.name ? (
-                      <span className="ref-badge" title="Perfil de referencia">
+                      <span className="ref-badge" title="Reference profile">
                         ★
                       </span>
                     ) : (
                       <button
                         className="btn-icon"
                         onClick={() => handleSetReference(p.name)}
-                        title="Usar como referencia"
+                        title="Use as reference"
                       >
                         ☆
                       </button>
@@ -294,7 +302,7 @@ function App() {
                     <button
                       className="btn-icon btn-icon-danger"
                       onClick={() => setShowDeleteConfirm(p.name)}
-                      title="Eliminar"
+                      title="Delete"
                     >
                       ✕
                     </button>
@@ -305,7 +313,7 @@ function App() {
                   onClick={() => handleLaunch(p.name)}
                   disabled={launching !== null}
                 >
-                  {launching === p.name ? "Lanzando..." : "▶  PLAY"}
+                  {launching === p.name ? "Launching..." : "▶  PLAY"}
                 </button>
               </div>
             ))}
@@ -316,7 +324,7 @@ function App() {
       {/* Add Button */}
       <div className="footer">
         <button className="btn btn-primary" onClick={handleStartAdd}>
-          + Añadir cuenta
+          + Add account
         </button>
       </div>
 
@@ -325,23 +333,26 @@ function App() {
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (
-        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(null)}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowDeleteConfirm(null)}
+        >
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <p className="modal-text">
-              ¿Eliminar el perfil <strong>{showDeleteConfirm}</strong>?
+              Delete profile <strong>{showDeleteConfirm}</strong>?
             </p>
             <div className="modal-actions">
               <button
                 className="btn btn-ghost"
                 onClick={() => setShowDeleteConfirm(null)}
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 className="btn btn-danger"
                 onClick={() => handleDelete(showDeleteConfirm)}
               >
-                Eliminar
+                Delete
               </button>
             </div>
           </div>

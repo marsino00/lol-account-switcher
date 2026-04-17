@@ -23,11 +23,11 @@ The app saves your Riot Client session files locally when you log in with "Stay 
 
 ### Adding accounts
 
-1. Click **"+ Añadir cuenta"**
+1. Click **"+ Add account"**
 2. Enter a profile name (e.g., `main`, `smurf`, `tryhard`)
-3. Click **"Abrir Riot Client"** — the Riot Client will open with a clean session
+3. Click **"Open Riot Client"** — the Riot Client will open with a clean session
 4. Log in with your account and **check "Stay signed in"**
-5. Once you're in the League client, close everything and click **"Guardar perfil"**
+5. Once you're in the League client, close everything and click **"Save profile"**
 
 Repeat for each account.
 

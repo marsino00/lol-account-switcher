@@ -176,7 +176,7 @@ fn save_profile(name: String) -> Result<String, String> {
     fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
     copy_session_files(&riot_root(), &dest)?;
     apply_reference_configs(&dest)?;
-    Ok(format!("Perfil '{}' guardado", name))
+    Ok(format!("Profile '{}' saved", name))
 }
 
 #[tauri::command]
@@ -185,46 +185,46 @@ fn delete_profile(name: String) -> Result<String, String> {
     if dest.exists() {
         fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
     }
-    Ok(format!("Perfil '{}' eliminado", name))
+    Ok(format!("Profile '{}' deleted", name))
 }
 
 #[tauri::command]
 fn launch_profile(name: String) -> Result<String, String> {
     let config = load_config();
     if config.riot_client_exe.is_empty() {
-        return Err("Ruta del Riot Client no configurada".to_string());
+        return Err("Riot Client path not configured".to_string());
     }
     let src = profiles_dir().join(&name);
     if !src.exists() {
-        return Err(format!("No existe el perfil '{}'", name));
+        return Err(format!("Profile '{}' does not exist", name));
     }
     stop_riot_processes();
     copy_session_files(&src, &riot_root())?;
     Command::new(&config.riot_client_exe)
         .args(["--launch-product=league_of_legends", "--launch-patchline=live"])
         .spawn()
-        .map_err(|e| format!("Error lanzando Riot Client: {}", e))?;
-    Ok(format!("Lanzado LoL con '{}'", name))
+        .map_err(|e| format!("Error launching Riot Client: {}", e))?;
+    Ok(format!("Launched LoL with '{}'", name))
 }
 
 #[tauri::command]
 fn close_riot() -> Result<String, String> {
     stop_riot_processes();
-    Ok("Cerrado".to_string())
+    Ok("Closed".to_string())
 }
 
 #[tauri::command]
 fn prepare_add() -> Result<String, String> {
     let config = load_config();
     if config.riot_client_exe.is_empty() {
-        return Err("Ruta del Riot Client no configurada".to_string());
+        return Err("Riot Client path not configured".to_string());
     }
     stop_riot_processes();
     clear_session_files();
     Command::new(&config.riot_client_exe)
         .spawn()
-        .map_err(|e| format!("Error abriendo Riot Client: {}", e))?;
-    Ok("Riot Client abierto. Haz login con Stay signed in.".to_string())
+        .map_err(|e| format!("Error opening Riot Client: {}", e))?;
+    Ok("Riot Client opened. Log in with Stay signed in.".to_string())
 }
 
 #[tauri::command]
@@ -236,12 +236,12 @@ fn get_config() -> AppConfig {
 fn set_riot_path(path: String) -> Result<String, String> {
     let exe = PathBuf::from(&path).join("RiotClientServices.exe");
     if !exe.exists() {
-        return Err(format!("No se encontro RiotClientServices.exe en {}", path));
+        return Err(format!("RiotClientServices.exe not found at {}", path));
     }
     let mut config = load_config();
     config.riot_client_exe = exe.to_string_lossy().to_string();
     save_config(&config)?;
-    Ok("Ruta guardada".to_string())
+    Ok("Path saved".to_string())
 }
 
 #[tauri::command]
@@ -249,7 +249,7 @@ fn set_reference_profile(name: String) -> Result<String, String> {
     let mut config = load_config();
     config.reference_profile = name.clone();
     save_config(&config)?;
-    Ok(format!("Perfil de referencia: {}", name))
+    Ok(format!("Reference profile: {}", name))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
