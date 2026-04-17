@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn tsc *)",
+      "Bash(cargo check *)",
+      "Bash(git -C c:/Users/Roger/lol-switcher ls-files)"
+    ]
+  }
+}

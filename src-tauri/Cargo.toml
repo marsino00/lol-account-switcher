@@ -2,7 +2,7 @@
 name = "lol-switcher"
 version = "0.1.0"
 description = "LoL Account Switcher"
-authors = ["Roger"]
+authors = ["Marsino00"]
 edition = "2021"
 
 [lib]
