@@ -24,4 +24,7 @@ export const api = {
     invoke<string>("set_reference_profile", { name }),
   autoDetectRiot: () => invoke<string>("auto_detect_riot"),
   rebuildTray: () => invoke<void>("rebuild_tray"),
+  getAutostart: () => invoke<boolean>("get_autostart"),
+  setAutostart: (enabled: boolean) =>
+    invoke<boolean>("set_autostart", { enabled }),
 };

@@ -20,6 +20,7 @@ const translations = {
     referenceProfile: "Reference profile:",
     none: "None",
     language: "Language:",
+    autostart: "Start with Windows:",
 
     // Empty state
     noProfiles: "No profiles yet",
@@ -92,6 +93,7 @@ const translations = {
     referenceProfile: "Perfil de referencia:",
     none: "Ninguno",
     language: "Idioma:",
+    autostart: "Iniciar con Windows:",
 
     // Empty state
     noProfiles: "No hay perfiles",

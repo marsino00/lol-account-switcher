@@ -1,0 +1,93 @@
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Dark navy disc with subtle radial depth -->
+    <radialGradient id="discGrad" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#1A2844"/>
+      <stop offset="55%" stop-color="#0A1428"/>
+      <stop offset="100%" stop-color="#030812"/>
+    </radialGradient>
+
+    <!-- Gold ring gradient (embossed feel) -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F0E6D2"/>
+      <stop offset="22%" stop-color="#D4A94A"/>
+      <stop offset="50%" stop-color="#C89B3C"/>
+      <stop offset="78%" stop-color="#8A6424"/>
+      <stop offset="100%" stop-color="#E8DAB4"/>
+    </linearGradient>
+
+    <!-- Cyan arrow gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7FE8F0"/>
+      <stop offset="45%" stop-color="#4BD4E0"/>
+      <stop offset="100%" stop-color="#1A8FA8"/>
+    </linearGradient>
+
+    <!-- Gem inlay gradient -->
+    <radialGradient id="gemGrad" cx="50%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#F8EFD8"/>
+      <stop offset="55%" stop-color="#D4A94A"/>
+      <stop offset="100%" stop-color="#7A5420"/>
+    </radialGradient>
+
+    <!-- Cyan glow filter -->
+    <filter id="cyanGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Reusable gem: tall diamond oriented with its long axis along +Y (outward) -->
+    <g id="gem">
+      <path d="M 0,-20 L 11,0 L 0,20 L -11,0 Z" fill="#7A5420"/>
+      <path d="M 0,-18 L 10,0 L 0,18 L -10,0 Z" fill="url(#goldGrad)"/>
+      <path d="M 0,-10 L 5,0 L 0,10 L -5,0 Z" fill="url(#gemGrad)" stroke="#7A5420" stroke-width="0.6"/>
+      <path d="M 0,-7 L 2.5,-2 L 0,-4 L -2.5,-2 Z" fill="#F8EFD8" opacity="0.75"/>
+    </g>
+  </defs>
+
+  <!-- Dark navy disc -->
+  <circle cx="512" cy="512" r="418" fill="url(#discGrad)"/>
+
+  <!-- Faint inner rim shadow (adds depth where disc meets ring) -->
+  <circle cx="512" cy="512" r="418" fill="none" stroke="#000" stroke-opacity="0.45" stroke-width="3"/>
+
+  <!-- Inner thin gold ring -->
+  <circle cx="512" cy="512" r="422" fill="none" stroke="url(#goldGrad)" stroke-width="4"/>
+
+  <!-- Outer main gold ring -->
+  <circle cx="512" cy="512" r="458" fill="none" stroke="url(#goldGrad)" stroke-width="9"/>
+
+  <!-- 8 gems, each rotated radially outward -->
+  <use href="#gem" transform="translate(512, 72) rotate(0)"/>
+  <use href="#gem" transform="translate(823.14, 200.86) rotate(45)"/>
+  <use href="#gem" transform="translate(952, 512) rotate(90)"/>
+  <use href="#gem" transform="translate(823.14, 823.14) rotate(135)"/>
+  <use href="#gem" transform="translate(512, 952) rotate(180)"/>
+  <use href="#gem" transform="translate(200.86, 823.14) rotate(225)"/>
+  <use href="#gem" transform="translate(72, 512) rotate(270)"/>
+  <use href="#gem" transform="translate(200.86, 200.86) rotate(315)"/>
+
+  <!-- Two cyan refresh arrows, both rotating CW -->
+  <g filter="url(#cyanGlow)">
+    <!-- Arrow A: left side, sweeping upward (tail at 200°, head at 335°+) -->
+    <path d="M 443.6,700.0
+             A 200,200 0 0 1 427.5,330.7
+             L 410.6,294.5
+             L 472.8,309.5
+             L 444.3,367.0
+             A 160,160 0 0 0 457.3,662.4 Z"
+          fill="url(#cyanGrad)"/>
+    <!-- Arrow B: right side, sweeping downward (tail at 20°, head at 155°+), 180° rotation of A -->
+    <path d="M 580.4,324.0
+             A 200,200 0 0 1 596.5,693.3
+             L 613.4,729.5
+             L 551.2,714.5
+             L 579.7,657.0
+             A 160,160 0 0 0 566.7,361.6 Z"
+          fill="url(#cyanGrad)"/>
+  </g>
+</svg>

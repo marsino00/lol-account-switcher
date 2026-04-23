@@ -23,6 +23,7 @@ function App() {
   );
   const [renameTarget, setRenameTarget] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState("");
+  const [autostart, setAutostart] = useState(false);
 
   const showStatus = useCallback((msg: string) => {
     setStatus(msg);
@@ -55,7 +56,20 @@ function App() {
       setStatus(t.error(e));
     }
     api.rebuildTray().catch(() => {});
+    api
+      .getAutostart()
+      .then(setAutostart)
+      .catch(() => {});
   }, [showStatus, t]);
+
+  const handleToggleAutostart = async () => {
+    try {
+      const next = await api.setAutostart(!autostart);
+      setAutostart(next);
+    } catch (e) {
+      showStatus(t.error(e));
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -338,6 +352,17 @@ function App() {
             <span className="settings-value">
               {config?.reference_profile || t.none}
             </span>
+          </div>
+          <div className="settings-row">
+            <span className="settings-label">{t.autostart}</span>
+            <label className="switch" title={t.autostart}>
+              <input
+                type="checkbox"
+                checked={autostart}
+                onChange={handleToggleAutostart}
+              />
+              <span className="slider" />
+            </label>
           </div>
           <div className="settings-row">
             <span className="settings-label">{t.language}</span>

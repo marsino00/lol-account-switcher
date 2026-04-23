@@ -11,6 +11,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, WindowEvent,
 };
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 // --- Paths ---
 
@@ -160,30 +161,62 @@ fn stop_riot_processes() {
     }
 }
 
-fn apply_reference_configs(profile_dir: &PathBuf) -> Result<(), String> {
-    let config = load_config();
-    if config.reference_profile.is_empty() {
-        return Ok(());
+// Files whose source is the reference profile (if set) instead of riot_root
+const REFERENCE_CONFIG_FILES: &[&str] = &[
+    "Config\\RiotClientSettings.yaml",
+    "Config\\ClientConfiguration.json",
+    "Data\\ShutdownData.yaml",
+];
+
+fn copy_with_retry(src: &PathBuf, dst: &PathBuf, label: &str) -> Result<(), String> {
+    if let Some(parent) = dst.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("mkdir {}: {}", parent.display(), e))?;
     }
-    let ref_dir = profiles_dir().join(&config.reference_profile);
-    if !ref_dir.exists() {
-        return Ok(());
-    }
-    // Copy all session files EXCEPT the auth token
-    let config_files = &[
-        "Config\\RiotClientSettings.yaml",
-        "Config\\ClientConfiguration.json",
-        "Data\\ShutdownData.yaml",
-    ];
-    for rel in config_files {
-        let src = ref_dir.join(rel);
-        let dst = profile_dir.join(rel);
-        if src.exists() {
-            if let Some(parent) = dst.parent() {
-                fs::create_dir_all(parent).ok();
+    let mut last_err = String::new();
+    for attempt in 0..5 {
+        match fs::copy(src, dst) {
+            Ok(_) => return Ok(()),
+            Err(e) => {
+                last_err = format!("{} {} -> {}: {}", label, src.display(), dst.display(), e);
+                thread::sleep(Duration::from_millis(80 * (attempt + 1)));
             }
-            fs::copy(&src, &dst).map_err(|e| format!("ref copy: {}", e))?;
         }
+    }
+    Err(last_err)
+}
+
+fn save_profile_files(profile_dir: &PathBuf) -> Result<(), String> {
+    let config = load_config();
+    let ref_dir = if !config.reference_profile.is_empty() {
+        let d = profiles_dir().join(&config.reference_profile);
+        if d.exists() && d != *profile_dir {
+            Some(d)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    let riot = riot_root();
+    for rel in SESSION_FILES {
+        let use_ref = ref_dir.is_some() && REFERENCE_CONFIG_FILES.contains(rel);
+        let src = if use_ref {
+            ref_dir.as_ref().unwrap().join(rel)
+        } else {
+            riot.join(rel)
+        };
+        let dst = profile_dir.join(rel);
+        if !src.exists() {
+            // Fall back to riot_root if the reference profile is missing this file
+            if use_ref {
+                let fallback = riot.join(rel);
+                if fallback.exists() {
+                    copy_with_retry(&fallback, &dst, "copy")?;
+                }
+            }
+            continue;
+        }
+        copy_with_retry(&src, &dst, if use_ref { "ref copy" } else { "copy" })?;
     }
     Ok(())
 }
@@ -214,8 +247,7 @@ fn save_profile(name: String) -> Result<String, String> {
     ensure_profiles_dir();
     let dest = profiles_dir().join(&name);
     fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
-    copy_session_files(&riot_root(), &dest)?;
-    apply_reference_configs(&dest)?;
+    save_profile_files(&dest)?;
     Ok(format!("Profile '{}' saved", name))
 }
 
@@ -339,6 +371,22 @@ fn auto_detect_riot() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn get_autostart(app: AppHandle) -> Result<bool, String> {
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool, String> {
+    let manager = app.autolaunch();
+    if enabled {
+        manager.enable().map_err(|e| e.to_string())?;
+    } else {
+        manager.disable().map_err(|e| e.to_string())?;
+    }
+    manager.is_enabled().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn set_reference_profile(name: String) -> Result<String, String> {
     let mut config = load_config();
     config.reference_profile = name.clone();
@@ -429,6 +477,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]),
+        ))
         .invoke_handler(tauri::generate_handler![
             list_profiles,
             save_profile,
@@ -442,8 +494,20 @@ pub fn run() {
             set_reference_profile,
             auto_detect_riot,
             rebuild_tray,
+            get_autostart,
+            set_autostart,
         ])
         .setup(|app| {
+            // Window is created hidden (tauri.conf.json "visible": false).
+            // Show it unless the app was launched by autostart — in that case
+            // we stay silent in the tray until the user clicks the tray icon.
+            let started_via_autostart = std::env::args().any(|a| a == "--autostart");
+            if !started_via_autostart {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            }
             let menu = build_tray_menu(app.handle(), &profile_names())?;
             let icon = app
                 .default_window_icon()
