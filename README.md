@@ -1,8 +1,19 @@
-# LoL Account Switcher
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" alt="LoL Account Switcher" width="128" height="128" />
+</p>
 
-A lightweight desktop app for switching between multiple League of Legends accounts instantly — no passwords stored, no keystrokes simulated.
+<h1 align="center">LoL Account Switcher</h1>
 
-Built with [Tauri](https://tauri.app/) (Rust + React + TypeScript).
+<p align="center">
+  A lightweight desktop app for switching between multiple League of Legends accounts instantly<br/>
+  — no passwords stored, no keystrokes simulated.
+</p>
+
+<p align="center">
+  Built with <a href="https://tauri.app/">Tauri</a> (Rust + React + TypeScript).
+</p>
+
+---
 
 ## Installation
 
@@ -31,6 +42,7 @@ The app saves your Riot Client session files locally when you log in with "Stay 
 - **Multi-language UI** — English (default) and Spanish, togglable from the settings panel; preference is persisted locally
 - **Auto-detection** of the Riot Client install path
 - **Reference profile** for replicating Riot Client settings across new accounts
+- **Start with Windows** — optional toggle in settings that launches the app minimized to the system tray on boot, so your profiles are one click away as soon as your PC is ready
 
 ## Usage
 
@@ -69,11 +81,16 @@ If one of your accounts launches League directly (skipping the Riot Client launc
 
 Open the ⚙ settings panel and toggle between **ES** and **EN**. The choice is stored in `localStorage`.
 
+### Start with Windows
+
+In the ⚙ settings panel, toggle **Start with Windows** on. The app will register itself to run at login and launch silently into the system tray — no window pops up on boot. Left-click the tray icon when you want to open it. Toggle it off any time to remove the startup entry.
+
 ## Tech Stack
 
 - **Frontend**: React 19 + TypeScript + Vite
 - **Backend**: Rust (Tauri 2) with `tray-icon` feature
-- **Packaging**: Tauri bundler (NSIS installer) — binary: `lolaccountswitcher.exe`
+- **Plugins**: `tauri-plugin-dialog`, `tauri-plugin-opener`, `tauri-plugin-autostart`
+- **Packaging**: Tauri bundler (NSIS installer) — binary: `lolAccSwitcher.exe`
 
 ## Building from source
 
