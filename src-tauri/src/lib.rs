@@ -32,12 +32,21 @@ fn riot_root() -> PathBuf {
         .join("Riot Client")
 }
 
-// Session files to copy (relative to riot root)
+// Files saved into a profile (relative to riot root)
 const SESSION_FILES: &[&str] = &[
     "Data\\RiotGamesPrivateSettings.yaml",
     "Data\\ShutdownData.yaml",
     "Config\\RiotClientSettings.yaml",
     "Config\\ClientConfiguration.json",
+];
+
+// Files restored on launch. ClientConfiguration.json is intentionally excluded:
+// the Riot Client regenerates it on every patch with new build IDs / manifests,
+// and overwriting it with a stale copy invalidates the persistent login token.
+const LAUNCH_FILES: &[&str] = &[
+    "Data\\RiotGamesPrivateSettings.yaml",
+    "Data\\ShutdownData.yaml",
+    "Config\\RiotClientSettings.yaml",
 ];
 
 // Riot process names to kill
@@ -92,7 +101,7 @@ fn ensure_profiles_dir() {
 }
 
 fn copy_session_files(from: &PathBuf, to: &PathBuf) -> Result<(), String> {
-    for rel in SESSION_FILES {
+    for rel in LAUNCH_FILES {
         let src = from.join(rel);
         let dst = to.join(rel);
         if src.exists() {
