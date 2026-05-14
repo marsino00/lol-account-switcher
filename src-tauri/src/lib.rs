@@ -1,11 +1,15 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
-use std::process::Command;
-use std::thread;
-use std::time::Duration;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Mutex,
+};
+use std::thread;
+use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -16,9 +20,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 // --- Paths ---
 
 fn profiles_dir() -> PathBuf {
-    dirs::home_dir()
-        .expect("No home dir")
-        .join(".lol-profiles")
+    dirs::home_dir().expect("No home dir").join(".lol-profiles")
 }
 
 fn config_file() -> PathBuf {
@@ -64,6 +66,21 @@ const RIOT_PROCESSES: &[&str] = &[
     "Riot Vanguard Installer",
 ];
 
+// Files copied back into the active profile after launch. Riot may rotate or
+// rewrite these after a patch/session refresh; if we never persist the new
+// values, saved profiles slowly become stale and require logging in again.
+const PROFILE_REFRESH_FILES: &[&str] = &[
+    "Data\\RiotGamesPrivateSettings.yaml",
+    "Data\\ShutdownData.yaml",
+    "Config\\RiotClientSettings.yaml",
+];
+
+const PROFILE_REFRESH_WINDOW_SECONDS: u64 = 30 * 60;
+const PROFILE_REFRESH_INTERVAL_SECONDS: u64 = 10;
+
+static SESSION_SYNC_GENERATION: AtomicU64 = AtomicU64::new(0);
+static ACTIVE_PROFILE: Mutex<Option<String>> = Mutex::new(None);
+
 // --- Config ---
 
 #[derive(Serialize, Deserialize, Default)]
@@ -105,15 +122,52 @@ fn ensure_profiles_dir() {
     }
 }
 
+fn validate_profile_name(name: &str) -> Result<String, String> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err("Profile name cannot be empty".to_string());
+    }
+    if name == "." || name == ".." || name.starts_with('_') {
+        return Err("Invalid profile name".to_string());
+    }
+    if name.contains(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) {
+        return Err("Name contains invalid characters".to_string());
+    }
+    Ok(name.to_string())
+}
+
+fn profile_dir_for(name: &str) -> Result<PathBuf, String> {
+    Ok(profiles_dir().join(validate_profile_name(name)?))
+}
+
+fn next_session_sync_generation() -> u64 {
+    SESSION_SYNC_GENERATION.fetch_add(1, Ordering::SeqCst) + 1
+}
+
+fn set_active_profile(name: Option<String>) {
+    if let Ok(mut active) = ACTIVE_PROFILE.lock() {
+        *active = name;
+    }
+}
+
+fn active_profile_dir() -> Option<PathBuf> {
+    ACTIVE_PROFILE
+        .lock()
+        .ok()
+        .and_then(|active| active.as_ref().map(|name| profiles_dir().join(name)))
+}
+
 fn copy_session_files(from: &PathBuf, to: &PathBuf) -> Result<(), String> {
     for rel in LAUNCH_FILES {
         let src = from.join(rel);
         let dst = to.join(rel);
         if src.exists() {
             if let Some(parent) = dst.parent() {
-                fs::create_dir_all(parent).map_err(|e| format!("mkdir {}: {}", parent.display(), e))?;
+                fs::create_dir_all(parent)
+                    .map_err(|e| format!("mkdir {}: {}", parent.display(), e))?;
             }
-            fs::copy(&src, &dst).map_err(|e| format!("copy {} -> {}: {}", src.display(), dst.display(), e))?;
+            fs::copy(&src, &dst)
+                .map_err(|e| format!("copy {} -> {}: {}", src.display(), dst.display(), e))?;
         }
     }
     Ok(())
@@ -199,6 +253,50 @@ fn copy_with_retry(src: &PathBuf, dst: &PathBuf, label: &str) -> Result<(), Stri
     Err(last_err)
 }
 
+fn copy_if_changed(src: &PathBuf, dst: &PathBuf, label: &str) -> Result<bool, String> {
+    let src_bytes = fs::read(src).map_err(|e| format!("read {}: {}", src.display(), e))?;
+    if dst.exists() {
+        if let Ok(dst_bytes) = fs::read(dst) {
+            if dst_bytes == src_bytes {
+                return Ok(false);
+            }
+        }
+    }
+    copy_with_retry(src, dst, label)?;
+    Ok(true)
+}
+
+fn refresh_profile_from_riot(profile_dir: &PathBuf) -> Result<bool, String> {
+    let riot = riot_root();
+    let mut changed = false;
+    for rel in PROFILE_REFRESH_FILES {
+        let src = riot.join(rel);
+        if !src.exists() {
+            continue;
+        }
+        let dst = profile_dir.join(rel);
+        if copy_if_changed(&src, &dst, "refresh")? {
+            changed = true;
+        }
+    }
+    Ok(changed)
+}
+
+fn schedule_profile_refresh(name: String, generation: u64) {
+    let profile_dir = profiles_dir().join(name);
+    thread::spawn(move || {
+        let deadline =
+            std::time::Instant::now() + Duration::from_secs(PROFILE_REFRESH_WINDOW_SECONDS);
+        while std::time::Instant::now() < deadline {
+            if SESSION_SYNC_GENERATION.load(Ordering::SeqCst) != generation {
+                return;
+            }
+            let _ = refresh_profile_from_riot(&profile_dir);
+            thread::sleep(Duration::from_secs(PROFILE_REFRESH_INTERVAL_SECONDS));
+        }
+    });
+}
+
 fn save_profile_files(profile_dir: &PathBuf) -> Result<(), String> {
     let config = load_config();
     let ref_dir = if !config.reference_profile.is_empty() {
@@ -259,6 +357,7 @@ fn list_profiles() -> Vec<ProfileInfo> {
 #[tauri::command]
 fn save_profile(name: String) -> Result<String, String> {
     ensure_profiles_dir();
+    let name = validate_profile_name(&name)?;
     let dest = profiles_dir().join(&name);
     fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
     save_profile_files(&dest)?;
@@ -267,6 +366,7 @@ fn save_profile(name: String) -> Result<String, String> {
 
 #[tauri::command]
 fn delete_profile(name: String) -> Result<String, String> {
+    let name = validate_profile_name(&name)?;
     let dest = profiles_dir().join(&name);
     if dest.exists() {
         fs::remove_dir_all(&dest).map_err(|e| e.to_string())?;
@@ -276,21 +376,13 @@ fn delete_profile(name: String) -> Result<String, String> {
 
 #[tauri::command]
 fn rename_profile(old_name: String, new_name: String) -> Result<String, String> {
-    let new_name = new_name.trim().to_string();
-    if new_name.is_empty() {
-        return Err("New name cannot be empty".to_string());
-    }
-    if new_name.starts_with('_') {
-        return Err("Name cannot start with '_'".to_string());
-    }
-    if new_name.contains(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) {
-        return Err("Name contains invalid characters".to_string());
-    }
+    let old_name = validate_profile_name(&old_name)?;
+    let new_name = validate_profile_name(&new_name)?;
     if old_name == new_name {
         return Ok("No change".to_string());
     }
-    let src = profiles_dir().join(&old_name);
-    let dst = profiles_dir().join(&new_name);
+    let src = profile_dir_for(&old_name)?;
+    let dst = profile_dir_for(&new_name)?;
     if !src.exists() {
         return Err(format!("Profile '{}' does not exist", old_name));
     }
@@ -309,6 +401,7 @@ fn rename_profile(old_name: String, new_name: String) -> Result<String, String> 
 
 #[tauri::command]
 fn launch_profile(name: String) -> Result<String, String> {
+    let name = validate_profile_name(&name)?;
     let config = load_config();
     if config.riot_client_exe.is_empty() {
         return Err("Riot Client path not configured".to_string());
@@ -317,18 +410,33 @@ fn launch_profile(name: String) -> Result<String, String> {
     if !src.exists() {
         return Err(format!("Profile '{}' does not exist", name));
     }
+    if let Some(profile_dir) = active_profile_dir() {
+        let _ = refresh_profile_from_riot(&profile_dir);
+    }
+    let generation = next_session_sync_generation();
+    set_active_profile(None);
     stop_riot_processes();
     copy_session_files(&src, &riot_root())?;
     Command::new(&config.riot_client_exe)
-        .args(["--launch-product=league_of_legends", "--launch-patchline=live"])
+        .args([
+            "--launch-product=league_of_legends",
+            "--launch-patchline=live",
+        ])
         .spawn()
         .map_err(|e| format!("Error launching Riot Client: {}", e))?;
+    set_active_profile(Some(name.clone()));
+    schedule_profile_refresh(name.clone(), generation);
     Ok(format!("Launched LoL with '{}'", name))
 }
 
 #[tauri::command]
 fn close_riot() -> Result<String, String> {
+    next_session_sync_generation();
+    if let Some(profile_dir) = active_profile_dir() {
+        let _ = refresh_profile_from_riot(&profile_dir);
+    }
     stop_riot_processes();
+    set_active_profile(None);
     Ok("Closed".to_string())
 }
 
@@ -338,6 +446,11 @@ fn prepare_add() -> Result<String, String> {
     if config.riot_client_exe.is_empty() {
         return Err("Riot Client path not configured".to_string());
     }
+    if let Some(profile_dir) = active_profile_dir() {
+        let _ = refresh_profile_from_riot(&profile_dir);
+    }
+    next_session_sync_generation();
+    set_active_profile(None);
     stop_riot_processes();
     clear_session_files();
     Command::new(&config.riot_client_exe)
@@ -402,6 +515,7 @@ fn set_autostart(app: AppHandle, enabled: bool) -> Result<bool, String> {
 
 #[tauri::command]
 fn set_reference_profile(name: String) -> Result<String, String> {
+    let name = validate_profile_name(&name)?;
     let mut config = load_config();
     config.reference_profile = name.clone();
     save_config(&config)?;
@@ -470,15 +584,13 @@ fn handle_tray_menu(app: &AppHandle, id: &str) {
             if let Some(name) = other.strip_prefix("launch:") {
                 let name = name.to_string();
                 let app_handle = app.clone();
-                // Launch off the main thread — stop_riot_processes sleeps 1.2s
-                thread::spawn(move || {
-                    match launch_profile(name.clone()) {
-                        Ok(_) => {
-                            let _ = app_handle.emit("tray:launched", name);
-                        }
-                        Err(e) => {
-                            let _ = app_handle.emit("tray:error", e);
-                        }
+                // Launch off the main thread; killing Riot processes and disk I/O can block briefly.
+                thread::spawn(move || match launch_profile(name.clone()) {
+                    Ok(_) => {
+                        let _ = app_handle.emit("tray:launched", name);
+                    }
+                    Err(e) => {
+                        let _ = app_handle.emit("tray:error", e);
                     }
                 });
             }
