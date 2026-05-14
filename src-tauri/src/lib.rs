@@ -49,7 +49,10 @@ const LAUNCH_FILES: &[&str] = &[
     "Config\\RiotClientSettings.yaml",
 ];
 
-// Riot process names to kill
+// Riot process names to kill. The Vanguard *installer* is included because a stuck
+// installer instance blocks new launches with "Another instance of the Vanguard
+// Installer is already running". The Vanguard service (vgc) and driver (vgk) are
+// intentionally NOT killed — League refuses to start without them.
 const RIOT_PROCESSES: &[&str] = &[
     "RiotClientServices",
     "RiotClientUx",
@@ -57,6 +60,8 @@ const RIOT_PROCESSES: &[&str] = &[
     "LeagueClient",
     "LeagueClientUx",
     "LeagueClientUxRender",
+    "Install_Riot_Vanguard",
+    "Riot Vanguard Installer",
 ];
 
 // --- Config ---
